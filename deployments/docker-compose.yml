@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: order_pg
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=orderdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d orderdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  redis:
+    image: redis:7
+    container_name: order_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+  
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.5.0
+  #   container_name: order_zookeeper
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   ports:
+  #     - "2181:2181"
+  #   networks:
+  #     - backend
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.5.0
+  #   container_name: order_kafka
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "9092:9092"
+  #     - "29092:29092"  # для внутренней связи между сервисами
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+  #     KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+  #     KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #   networks:
+  #     - backend
+
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   container_name: kafka_ui
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: local
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+  #   networks:
+  #     - backend
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+    - ../migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://user:password@postgres:5432/orderdb?sslmode=disable",
+      "up"
+    ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  order-service:
+      build:
+        context: ..
+        dockerfile: deployments/Dockerfile
+      container_name: order_service
+      depends_on:
+          postgres:
+            condition: service_healthy
+        # - kafka
+        # - redis
+      ports:
+        - "8081:8081"
+      environment:
+        - HTTP_PORT=8081
+        - DB_URL=postgres://user:password@postgres:5432/orderdb?sslmode=disable
+        - REDIS_ADDR=redis:6379
+        - KAFKA_BROKERS=kafka:29092
+      networks:
+        - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  pgdata:
