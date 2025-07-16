@@ -8,6 +8,8 @@ import (
 	"time"
 
 	order_ucase "github.com/AlexanderZah/order-tracking/services/order-service/internal/app/usecase/order"
+	"github.com/AlexanderZah/order-tracking/services/order-service/internal/broker/kafka"
+	"github.com/AlexanderZah/order-tracking/services/order-service/internal/event"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/repository/entity/order"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -22,18 +24,21 @@ var ErrInvalidItemID = errors.New("invalid service id")
 
 // Handler creates orders
 type Handler struct {
-	uCase *order_ucase.Usecase
-	log   logrus.FieldLogger
+	uCase    *order_ucase.Usecase
+	log      logrus.FieldLogger
+	producer *kafka.Producer
 }
 
 // New gives Handler.
 func New(
 	uCase *order_ucase.Usecase,
 	log logrus.FieldLogger,
+	producer *kafka.Producer,
 ) *Handler {
 	return &Handler{
-		uCase: uCase,
-		log:   log,
+		uCase:    uCase,
+		log:      log,
+		producer: producer,
 	}
 }
 
@@ -87,6 +92,17 @@ func (h Handler) Create(ctx context.Context) http.Handler {
 			h.log.Errorf("can't create order: %v: %s", order, err.Error())
 			http.Error(w, "can't create order: "+err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		createdEvent := event.OrderCreated{
+			OrderID: order.ID,
+			UserID:  order.UserID,
+			Address: order.DeliveryAddress,
+		}
+
+		err = h.producer.Publish(ctx, order.ID.String(), createdEvent)
+		if err != nil {
+			h.log.Errorf("can't publish order.created: %s", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")

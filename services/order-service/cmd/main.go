@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	config "github.com/AlexanderZah/order-tracking/services/order-service/config"
+	"github.com/AlexanderZah/order-tracking/services/order-service/internal/broker/kafka"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/handler"
 	"github.com/sirupsen/logrus"
 )
@@ -18,8 +20,11 @@ func main() {
 	}
 
 	logger := logrus.New()
+	brokers := strings.Split(cfg.KafkaAddr, ",")
+	producer := kafka.New(brokers, "order.created")
+	defer producer.Close()
 	// инициализируем роутер
-	router, err := handler.Router(context.Background(), logger, cfg)
+	router, err := handler.Router(context.Background(), logger, cfg, producer)
 	if err != nil {
 		log.Fatalf("Failed to initialize router: %v", err)
 	}
