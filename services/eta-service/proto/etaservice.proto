@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package etaservice.v1;
+option go_package = "github.com/AlexanderZah/order-tracking/services/eta-service/gen/go/etaservice/v1";
+
+service ETAService {
+    rpc GetETA (Order) returns (ETAResponse);
+}
+
+message Order {
+  string delivery_address = 1;
+}
+
+message ETAResponse {
+    int32 eta = 1; 
+}

@@ -105,6 +105,9 @@ func (h Handler) Create(ctx context.Context) http.Handler {
 			h.log.Errorf("can't publish order.created: %s", err)
 		}
 
+		eta, err := etaClient.GetETA(ctx, order.DeliveryAddress)
+		order.ETAMinutes = &eta
+
 		w.Header().Set("Content-Type", "application/json")
 
 		m := make(map[string]interface{})
