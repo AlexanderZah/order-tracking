@@ -39,6 +39,11 @@ func (r *Repository) Save(ctx context.Context, log logrus.FieldLogger, order *or
 		return fmt.Errorf("can't create tx: %s", err.Error())
 	}
 
+	defer func() {
+		// safety rollback if commit didn't happen
+		_ = tx.Rollback(ctx)
+	}()
+
 	query, args, err := sq.
 		Insert(ordersTable).
 		Columns("user_id", "status", "created_at", "updated_at", "eta_minutes", "delivery_address").
@@ -55,19 +60,7 @@ func (r *Repository) Save(ctx context.Context, log logrus.FieldLogger, order *or
 		return fmt.Errorf("can't build sql:%s", err.Error())
 	}
 
-	rows, err := tx.Query(ctx, query, args...)
-	if err != nil {
-		rollbackErr := tx.Rollback(ctx)
-		if rollbackErr != nil {
-			return fmt.Errorf("rollback err: %s, err: %s", rollbackErr.Error(), err.Error())
-
-		}
-		return err
-	}
-	defer rows.Close()
-
-	var orderID uuid.UUID
-	err = tx.QueryRow(ctx, query, args...).Scan(&orderID)
+	err = tx.QueryRow(ctx, query, args...).Scan(&order.ID)
 	if err != nil {
 		return fmt.Errorf("failed to insert order: %w", err)
 	}
