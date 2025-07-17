@@ -10,7 +10,6 @@ import (
 	config "github.com/AlexanderZah/order-tracking/services/order-service/config"
 	orderUcase "github.com/AlexanderZah/order-tracking/services/order-service/internal/app/usecase/order"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/broker/kafka"
-	etaClient "github.com/AlexanderZah/order-tracking/services/order-service/internal/client/etaservice"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/handler"
 	orderRepo "github.com/AlexanderZah/order-tracking/services/order-service/internal/repository/order"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -26,21 +25,17 @@ func main() {
 	logger := logrus.New()
 	brokers := strings.Split(cfg.KafkaAddr, ",")
 	producer := kafka.New(brokers, "order.created")
-	pool, err := pgxpool.Connect(context.Background(), cfg.DBURL)
+	ctx := context.Background()
+	pool, err := pgxpool.Connect(ctx, cfg.DBURL)
 	if err != nil {
-		return nil, fmt.Errorf("can't create pg pool: %s", err.Error())
+		log.Fatalf("can't create pg pool: %s", err.Error())
 	}
 	repo := orderRepo.New(pool)
 
-	etacl, err := etaClient.New("localhost:50051")
-	if err != nil {
-		log.Fatalf("failed to connect to ETA service: %v", err)
-	}
-
-	order_ucase := orderUcase.New(repo, etacl)
+	order_ucase := orderUcase.New(repo)
 	defer producer.Close()
 	// инициализируем роутер
-	router, err := handler.Router(context.Background(), logger, cfg, producer, order_ucase)
+	router, err := handler.Router(ctx, logger, cfg, producer, order_ucase)
 	if err != nil {
 		log.Fatalf("Failed to initialize router: %v", err)
 	}

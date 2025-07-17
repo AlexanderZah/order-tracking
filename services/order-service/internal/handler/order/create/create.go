@@ -9,7 +9,6 @@ import (
 
 	order_ucase "github.com/AlexanderZah/order-tracking/services/order-service/internal/app/usecase/order"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/broker/kafka"
-	etaClient "github.com/AlexanderZah/order-tracking/services/order-service/internal/client/etaservice"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/event"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/repository/entity/order"
 	"github.com/google/uuid"
@@ -105,9 +104,6 @@ func (h Handler) Create(ctx context.Context) http.Handler {
 		if err != nil {
 			h.log.Errorf("can't publish order.created: %s", err)
 		}
-
-		eta, err := etaClient.GetETA(ctx, order.DeliveryAddress)
-		order.ETAMinutes = &eta
 
 		w.Header().Set("Content-Type", "application/json")
 

@@ -15,7 +15,7 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	if err := godotenv.Load("./services/order-service/.env"); err != nil {
+	if err := godotenv.Load("./services/eta-service/.env"); err != nil {
 		log.Println("No .env file found, using default vars")
 	}
 
