@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var ErrEmptyOrderIds = errors.New("no order ids passed")
+var ErrEmptyOrderId = errors.New("no order id passed")
 
 type Handler struct {
 	uCase *order_ucase.Usecase
@@ -28,22 +28,23 @@ func New(
 	}
 }
 
-type GetOrdersIn struct {
-	IDs []uuid.UUID `json:"ids"`
+type UpdateOrderIn struct {
+	ID         uuid.UUID `json:"id"`
+	EtaMinutes *int      `json:"eta_minutes"`
 }
 
-func (h Handler) validateReq(in *GetOrdersIn) error {
-	if len(in.IDs) == 0 {
-		return ErrEmptyOrderIds
+func (h Handler) validateReq(in *UpdateOrderIn) error {
+	if len(in.ID) == 0 {
+		return ErrEmptyOrderId
 	}
 
 	return nil
 }
 
-func (h Handler) Get(ctx context.Context) http.Handler {
+func (h Handler) Update(ctx context.Context) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// prepare dto to parse request
-		in := &GetOrdersIn{}
+		in := &UpdateOrderIn{}
 		// parse req body to dto
 		err := json.NewDecoder(r.Body).Decode(&in)
 		if err != nil {
@@ -60,15 +61,14 @@ func (h Handler) Get(ctx context.Context) http.Handler {
 			return
 		}
 
-		orders, err := h.uCase.Get(ctx, h.log, in.IDs)
+		err = h.uCase.Update(ctx, h.log, in.ID, in.EtaMinutes)
 		if err != nil {
-			h.log.Errorf("can't get orders: %s", err.Error())
-			http.Error(w, "can't get orders: "+err.Error(), http.StatusInternalServerError)
+			h.log.Errorf("can't update order: %s", err.Error())
+			http.Error(w, "can't update order: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(orders)
 	}
 	return http.HandlerFunc(fn)
 }

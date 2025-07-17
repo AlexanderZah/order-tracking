@@ -12,7 +12,7 @@ import (
 
 	"github.com/AlexanderZah/order-tracking/services/eta-service/config"
 	pb "github.com/AlexanderZah/order-tracking/services/eta-service/gen/go/etaservice/v1"
-	kafkaConsumer "github.com/AlexanderZah/order-tracking/services/eta-service/internal/broker/kafka/consumer"
+	kafkaMy "github.com/AlexanderZah/order-tracking/services/eta-service/internal/broker/kafka"
 	etaClient "github.com/AlexanderZah/order-tracking/services/eta-service/internal/client"
 	etaServer "github.com/AlexanderZah/order-tracking/services/eta-service/internal/server"
 	"google.golang.org/grpc"
@@ -39,14 +39,15 @@ func main() {
 	}
 
 	// Инициализация Kafka consumer
-	fmt.Println(cfg.KafkaAddr)
-	consumer := kafkaConsumer.New(strings.Split(cfg.KafkaAddr, ","), "order.created")
+	brokers := strings.Split(cfg.KafkaAddr, ",")
+	consumer := kafkaMy.NewConsumer(brokers, "order.created")
+	producer := kafkaMy.NewProducer(brokers, "order.eta.updated")
 
 	// Запуск consumer в отдельной горутине с обработкой ошибок
 	consumerDone := make(chan error, 1)
 	go func() {
 		defer close(consumerDone)
-		if err := consumer.Consume(ctx, etaCl); err != nil {
+		if err := consumer.Consume(ctx, etaCl, producer); err != nil {
 			consumerDone <- fmt.Errorf("consumer error: %w", err)
 		}
 	}()

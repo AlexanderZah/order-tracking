@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/repository/entity/order"
 	sq "github.com/Masterminds/squirrel"
@@ -27,6 +28,7 @@ type Repository struct {
 type OrderRepo interface {
 	Save(ctx context.Context, log logrus.FieldLogger, order *order.Order) error
 	Get(ctx context.Context, log logrus.FieldLogger, IDs []uuid.UUID) (map[uuid.UUID]order.Order, error)
+	Update(ctx context.Context, log logrus.FieldLogger, ID uuid.UUID, etaMinutes *int) error
 }
 
 func New(pool *pgxpool.Pool) *Repository {
@@ -104,4 +106,26 @@ func (r *Repository) Get(ctx context.Context, log logrus.FieldLogger, IDs []uuid
 	}
 
 	return ordersMap, nil
+}
+
+func (r *Repository) Update(ctx context.Context, log logrus.FieldLogger, ID uuid.UUID, etaMinutes *int) error {
+
+	where := sq.Eq{"id": ID}
+
+	query, args, err := sq.
+		Update(ordersTable).
+		Set("eta_minutes", etaMinutes).
+		Set("updated_at", time.Now()).
+		Where(where).
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("can't build sql:%s", err.Error())
+	}
+	_, err = r.db.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("can't execute update: %w", err)
+	}
+
+	return nil
 }

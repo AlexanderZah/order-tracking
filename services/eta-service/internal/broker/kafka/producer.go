@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -23,7 +22,7 @@ func NewProducer(brokers []string, topic string) *Producer {
 	}
 }
 
-func (p *Producer) Publish(ctx context.Context, key string, value any) error {
+func (p *Producer) PublishETAUpdated(ctx context.Context, key string, value any) error {
 	msgBytes, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -32,7 +31,6 @@ func (p *Producer) Publish(ctx context.Context, key string, value any) error {
 	return p.writer.WriteMessages(ctx, kafka.Message{
 		Key:   []byte(key),
 		Value: msgBytes,
-		Time:  time.Now(),
 	})
 }
 

@@ -24,7 +24,8 @@ func main() {
 
 	logger := logrus.New()
 	brokers := strings.Split(cfg.KafkaAddr, ",")
-	producer := kafka.New(brokers, "order.created")
+
+	producer := kafka.NewProducer(brokers, "order.created")
 	ctx := context.Background()
 	pool, err := pgxpool.Connect(ctx, cfg.DBURL)
 	if err != nil {
@@ -33,6 +34,15 @@ func main() {
 	repo := orderRepo.New(pool)
 
 	order_ucase := orderUcase.New(repo)
+	consumer := kafka.NewConsumer(brokers, "order.eta.updated", order_ucase, logger)
+	// Запуск consumer в отдельной горутине с обработкой ошибок
+	consumerDone := make(chan error, 1)
+	go func() {
+		defer close(consumerDone)
+		if err := consumer.Consume(ctx); err != nil {
+			consumerDone <- fmt.Errorf("consumer error: %w", err)
+		}
+	}()
 	defer producer.Close()
 	// инициализируем роутер
 	router, err := handler.Router(ctx, logger, cfg, producer, order_ucase)

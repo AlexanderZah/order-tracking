@@ -41,3 +41,13 @@ func (uc *Usecase) Get(ctx context.Context, log logrus.FieldLogger, IDs []uuid.U
 
 	return result, nil
 }
+
+func (uc *Usecase) Update(ctx context.Context, log logrus.FieldLogger, ID uuid.UUID, etaMinutes *int) error {
+	err := uc.repo.Update(ctx, log, ID, etaMinutes)
+	if err != nil {
+
+		return fmt.Errorf("err from orders_repository: %s", err.Error())
+	}
+
+	return nil
+}

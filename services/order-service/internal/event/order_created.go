@@ -7,3 +7,8 @@ type OrderCreated struct {
 	UserID  uuid.UUID `json:"user_id"`
 	Address string    `json:"address"`
 }
+
+type OrderETAUpdated struct {
+	OrderID    uuid.UUID `json:"order_id"`
+	ETAMinutes int       `json:"eta_minutes"`
+}
