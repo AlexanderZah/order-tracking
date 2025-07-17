@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	etaClient "github.com/AlexanderZah/order-tracking/services/order-service/internal/client/etaservice"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/repository/entity/order"
 	orderRepo "github.com/AlexanderZah/order-tracking/services/order-service/internal/repository/order"
 	"github.com/google/uuid"
@@ -12,11 +13,13 @@ import (
 
 type Usecase struct {
 	repo orderRepo.OrderRepo
+	eta  *etaClient.Client
 }
 
 // New gives Usecase.
-func New(orderRepo orderRepo.OrderRepo) *Usecase {
-	return &Usecase{repo: orderRepo}
+func New(orderRepo orderRepo.OrderRepo, eta *etaClient.Client) *Usecase {
+	return &Usecase{repo: orderRepo,
+		eta: eta}
 }
 
 func (uc *Usecase) Save(ctx context.Context, log logrus.FieldLogger, order *order.Order) error {
@@ -24,6 +27,12 @@ func (uc *Usecase) Save(ctx context.Context, log logrus.FieldLogger, order *orde
 
 		return err
 	}
+	etaMinutes, err := uc.eta.GetETA(ctx, order.DeliveryAddress)
+	if err != nil {
+		return err
+	}
+	eta := int(etaMinutes)
+	order.ETAMinutes = &eta
 
 	return nil
 }
@@ -35,7 +44,6 @@ func (uc *Usecase) Get(ctx context.Context, log logrus.FieldLogger, IDs []uuid.U
 		return nil, fmt.Errorf("err from orders_repository: %s", err.Error())
 	}
 
-	// count amount and discount for all orders.
 	result := make([]order.Order, 0, len(ordersMap))
 	for _, order := range ordersMap {
 		result = append(result, order)

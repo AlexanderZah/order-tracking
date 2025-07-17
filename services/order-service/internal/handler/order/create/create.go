@@ -9,6 +9,7 @@ import (
 
 	order_ucase "github.com/AlexanderZah/order-tracking/services/order-service/internal/app/usecase/order"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/broker/kafka"
+	etaClient "github.com/AlexanderZah/order-tracking/services/order-service/internal/client/etaservice"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/event"
 	"github.com/AlexanderZah/order-tracking/services/order-service/internal/repository/entity/order"
 	"github.com/google/uuid"

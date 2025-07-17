@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/AlexanderZah/services/eta-service/proto"
+	pb "github.com/AlexanderZah/order-tracking/services/eta-service/gen/go/etaservice/v1"
 	"google.golang.org/grpc"
 )
 
 type Client struct {
 	conn   *grpc.ClientConn
-	client pb.etaClient
+	client pb.ETAServiceClient
 }
 
 func New(address string) (*Client, error) {
